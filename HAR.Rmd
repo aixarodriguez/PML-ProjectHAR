@@ -1,0 +1,190 @@
+---
+title: "Prediction Project - Human Activiy Recognition"
+author: "Aixa Rodriguez Salan"
+date: "15/July/2017"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+options(repos='http://cran.rstudio.com/')
+packages<-c("rpart","caret","ElemStatLearn","pgmm","gbm","forecast","e1071","tree","rpart.plot","xtable")
+if (length(setdiff(packages, rownames(installed.packages()))) > 0) {
+  install.packages(setdiff(packages, rownames(installed.packages())))  
+}
+library(rpart)
+library(rpart.plot)
+library(caret)
+library(ElemStatLearn)
+library(pgmm)
+library(gbm)
+library(lubridate)
+library(forecast)
+library(e1071)
+library(rattle)
+library(tree)
+library(randomForest)
+library(xtable)
+library(knitr)
+```
+
+## <span style="color:#FC345C"> Introduction </span> 
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
+
+
+## <span style="color:#FC345C"> Data Source </span> 
+
+The training data for this project are available here: https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+The test data are available here: https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+The data for this project come from this source: http://groupware.les.inf.puc-rio.br/har. If you use the document you create for this class for any purpose please cite them as they have been very generous in allowing their data to be used for this kind of assignment.
+
+
+```{r datasource_get}
+setwd("D:/Data Science/8-Practical Machine Learning/Week4/Project")
+if(!dir.exists("./data")){dir.create("./data")}
+if(!file.exists("./data/pml-training.csv")){
+  download.file("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv",
+                "./data/pml-training.csv")
+  }
+if(!file.exists("./data/pml-testing.csv")){
+  download.file("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv",
+                "./data/pml-testing.csv")
+  }
+
+training_data<-read.csv("./data/pml-training.csv")
+testing_data<-read.csv("./data/pml-testing.csv")
+
+dim(training_data)
+dim(testing_data)
+```
+
+Firt set all the data with NULL values to NA and then remove all columns containing NA's and last remove some columns that are not related to dependant variables
+
+```{r datasource_clean, warning=FALSE}
+training_data[training_data==""]<-"NA"
+testing_data[testing_data==""]<-"NA"
+
+training_data<-training_data[,colSums(is.na(training_data))==0]
+testing_data<-testing_data[,colSums(is.na(testing_data))==0]
+
+col_del<-c('X','user_name','raw_timestamp_part_1','raw_timestamp_part_2',
+           'cvtd_timestamp','new_window','num_window')
+training_data<-training_data[,-which(names(training_data) %in% col_del)]
+testing_data<-testing_data[,-which(names(testing_data) %in% col_del)]
+
+dim(training_data)
+dim(testing_data)
+```
+
+And last split training_data into a 60% training and 40% testing data set used to make the cross validation. 
+
+```{r datasource_partition, warning=FALSE}
+set.seed(9910)
+inTrain<-createDataPartition(training_data$classe,p=0.6,list=FALSE)
+dt_training<-training_data[inTrain,]
+dt_testing<-training_data[-inTrain,]
+
+dim(dt_training)
+dim(dt_testing)
+```
+
+## <span style="color:#FC345C"> Prediction Algorithms </span> 
+
+Now we are trying to predict the model
+
+## <span style="color:#49BEB7; font-size:85%;"> Random Forest (rf) </span>
+
+```{r mod_rf}
+mod_rf<-randomForest(classe~.,data=dt_training,ntree=500)
+print(mod_rf)
+```
+```{r plot_rf}
+varImpPlot(mod_rf,main ="Random Forest")
+```
+
+```{r predict_rf}
+pred_rf<-predict(mod_rf,newdata=dt_testing)
+confusionMatrix(pred_rf,dt_testing$classe)
+```
+
+## <span style="color:#49BEB7; font-size:85%;"> CART (rpart) </span>
+
+```{r mod_rpart}
+mod_rpt<-train(classe~.,data=dt_training,method="rpart")
+print(mod_rpt)
+```
+
+
+
+```{r plot_rpt}
+fancyRpartPlot(mod_rpt$finalModel)
+```
+
+```{r predict_rpt}
+pred_rpt<-predict(mod_rpt,newdata=dt_testing)
+confusionMatrix(pred_rpt,dt_testing$classe)
+```
+
+## <span style="color:#49BEB7; font-size:85%;"> Linear Discriminant (lda) </span>
+
+```{r mod_lda}
+mod_lda<-train(classe~.,data=dt_training,method="lda",verbose=FALSE)
+print(mod_lda)
+```
+
+```{r predict_lda}
+pred_lda<-predict(mod_lda,newdata=dt_testing)
+confusionMatrix(pred_lda,dt_testing$classe)
+```
+
+## <span style="color:#49BEB7; font-size:85%;"> Support Vector Machines (svm) </span>
+
+```{r mod_svm}
+mod_svm<-svm(classe~.,data=dt_training)
+print(mod_svm)
+```
+
+```{r predict_svm}
+pred_svm<-predict(mod_svm,newdata=dt_testing)
+confusionMatrix(pred_svm,dt_testing$classe)$overall[4]
+```
+
+As we can see using differents algorithms to predict and comparing the accuracy of each one Random Forest it's the most accuracy with a 99%.
+
+```{r pred_tbl, results="asis",echo=FALSE}
+pred_dt<-data.frame(Accuracy=c(confusionMatrix(pred_rf,dt_testing$classe)$overall[1],
+                                confusionMatrix(pred_rpt,dt_testing$classe)$overall[1],
+                                confusionMatrix(pred_lda,dt_testing$classe)$overall[1],
+                                confusionMatrix(pred_svm,dt_testing$classe)$overall[1]),
+                     Kappa=c(confusionMatrix(pred_rf,dt_testing$classe)$overall[2],
+                                confusionMatrix(pred_rpt,dt_testing$classe)$overall[2],
+                                confusionMatrix(pred_lda,dt_testing$classe)$overall[2],
+                                confusionMatrix(pred_svm,dt_testing$classe)$overall[2]),
+                     AccuracyLower=c(confusionMatrix(pred_rf,dt_testing$classe)$overall[3],
+                                confusionMatrix(pred_rpt,dt_testing$classe)$overall[3],
+                                confusionMatrix(pred_lda,dt_testing$classe)$overall[3],
+                                confusionMatrix(pred_svm,dt_testing$classe)$overall[3]),
+                     AccuracyUpper=c(confusionMatrix(pred_rf,dt_testing$classe)$overall[4],
+                                confusionMatrix(pred_rpt,dt_testing$classe)$overall[4],
+                                confusionMatrix(pred_lda,dt_testing$classe)$overall[4],
+                                confusionMatrix(pred_svm,dt_testing$classe)$overall[4]))
+row.names(pred_dt)<-c("Random Forest","Cran RPart","LDA","SVM")
+kable(pred_dt)
+```
+
+## <span style="color:#FC345C"> Predicts on Testing Set </span> 
+
+Now using Random Forest to predict the outcome of the testing set
+
+```{r pred_testing}
+pred_testing<-predict(mod_rf,testing_data,type="class")
+print(pred_testing)
+
+pred_df<-data.frame(pred_testing)
+write.csv(pred_df,file="./data/pml-predicts.csv",row.names=FALSE)
+```
