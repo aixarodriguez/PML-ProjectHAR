@@ -3,8 +3,8 @@ title: "Prediction Project - Human Activiy Recognition"
 author: "Aixa Rodriguez Salan"
 date: "15/July/2017"
 output:
-  pdf_document: default
   html_document: default
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -172,10 +172,16 @@ pred_dt<-data.frame(Accuracy=c(confusionMatrix(pred_rf,dt_testing$classe)$overal
                      AccuracyUpper=c(confusionMatrix(pred_rf,dt_testing$classe)$overall[4],
                                 confusionMatrix(pred_rpt,dt_testing$classe)$overall[4],
                                 confusionMatrix(pred_lda,dt_testing$classe)$overall[4],
-                                confusionMatrix(pred_svm,dt_testing$classe)$overall[4]))
+                                confusionMatrix(pred_svm,dt_testing$classe)$overall[4]),
+                    OutSampleError=c(1-confusionMatrix(pred_rf,dt_testing$classe)$overall[1],
+                                1-confusionMatrix(pred_rpt,dt_testing$classe)$overall[1],
+                                1-confusionMatrix(pred_lda,dt_testing$classe)$overall[1],
+                                1-confusionMatrix(pred_svm,dt_testing$classe)$overall[1]))
 row.names(pred_dt)<-c("Random Forest","Cran RPart","LDA","SVM")
 kable(pred_dt)
 ```
+
+ 
 
 ## <span style="color:#FC345C"> Predicts on Testing Set </span> 
 
